@@ -45,12 +45,12 @@ var json = (function () {
             while (chr = str.shift()) {
                 if (chr == JSON_QUOTE) return [[this_str, "str"], str];
                 if (chr == JSON_ESCAPE) {
-                    if (!(chr = str.shift())) throw "lex_str: escaped char excepted.";
+                    if (!(chr = str.shift())) throw "lex_str: escaped char excepted but get end of file.";
                 }
                 this_str += chr;
             }
         
-            throw "lex_str: quote excepted.";
+            throw "lex_str: quote excepted but get end of file.";
         }
         
         function lex_num (str) {
@@ -131,22 +131,22 @@ var json = (function () {
                 if (type == 'token') {
                   if (elem == JSON_ARRR)
                       if (!elem_exp) return [[arr, "array"], tokens];
-                      else throw "par_array: unexpected ','";
-                  else throw "par_array: unexpected token.";
+                      else throw "par_array: expect ']' but see ','";
+                  else throw `par_array: expect element but saw token '${elem}'`;
                 }
                 arr.push(elem);
         
-                if (tokens.length < 1) throw "par_array: unexpected end of file";
+                if (tokens.length < 1) throw "par_array: expect ',' or ']' but see end of file.";
         
                 [elem, type] = tokens.shift();
                 if (type == 'token') {
                     if (elem == JSON_ARRR) return [[arr, "array"], tokens];
-                    else if (elem == JSON_COMA)  elem_exp = true; // bad
-                    else throw "par_array: unexpected token.";
-                } else throw "par_array: unexpected token.";
+                    else if (elem == JSON_COMA) elem_exp = true; // bad
+                    else throw `par_array: expect ',' or ']' but see ${elem}.`;
+                } else throw `par_array: expect ',' or ']' but see ${elem}.`;
             }
         
-            throw "par_array: unexpected end of file";
+            throw "par_array: expect element or ']' but see end of file.";
         }
     
         function par_obj (tokens) {
@@ -157,24 +157,25 @@ var json = (function () {
                 var [[key, type], tokens] = par (tokens);
                 if (type == 'token')
                     if (key == JSON_BR) return [[obj, "object"], tokens];
-                    else throw "unexpected token."
+                    else throw `par_obj: expect key or '}' but see '${key}'`;
         
-               if (tokens.length < 2) throw "par_obj: unexpected end of file";
+               if (tokens.length < 2) throw "par_obj: expect key but see end of file.";
         
                var [[tkn, type], tokens] = par (tokens);
                if (type == 'token' && tkn == JSON_COL) {
                    var [[value, type], tokens] = par (tokens);
                    if (type != "token") obj[key] = value;
-               } else throw "unexpected token."
+                   else throw `par_obj: expect value but see '${value}'`;
+               } else throw `par_obj: expect ':' but see '${tkn}'`;
         
-               if (tokens.length < 1) throw "par_array: unexpected end of file";
+               if (tokens.length < 1) throw "par_obj: expect ',' or '}' but see end of file.";
         
                [elem, type] = tokens.shift();
                if (type == 'token') {
                     if (elem == JSON_BR) return [[obj, "object"], tokens];
-                    else if (elem == JSON_COMA)  obj_exp = true; // bad
-                    else throw "par_obj: unexpected token.";
-                } else throw "par_obj: unexpected token.";
+                    else if (elem == JSON_COMA) obj_exp = true; // bad
+                    else throw `par_obj: expect ',' or '}' but see ${elem}.`;
+                } else throw `par_obj: expect ',' or '}' but see ${elem}.`;
             }
         }
         
@@ -186,6 +187,7 @@ var json = (function () {
         
             if (type == "int") return [[Number.parseInt(tkn), type], tokens]; // TODO: parseInt ignore eng
             if (type == "float") return [[Number.parseFloat(tkn), type], tokens];
+            if (type == "builtin" && tkn == "null") return [[null, type], tokens];
             return [[tkn, type], tokens];
         }
         
