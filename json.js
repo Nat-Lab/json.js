@@ -30,9 +30,8 @@ var json = (function () {
         
         function _any(fns, str) {
             for(var i = 0; i < fns.length; i++) {
-                var [result, rest] = fns[i](str);
-                str = rest;
-                if (result) return [result, rest];
+                var [result, str] = fns[i](str);
+                if (result) return [result, str];
             }
             return [null, str];
         }
@@ -109,10 +108,9 @@ var json = (function () {
             str = [...str];
         
             while (str.length > 0) {
-                [result, rest] = _any([
+                [result, str] = _any([
                     lex_bool, lex_null, lex_num, lex_str, lex_token
                 ], str);
-                str = rest;
                 if (result) tokens.push(result);
                 if (!result) throw `lex: unexpected token: ${str}`;
         
