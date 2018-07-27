@@ -40,7 +40,7 @@ var json = (function () {
             this_str = '';
         
             if (str[0] != JSON_QUOTE) return [null, str];
-            str.shift()
+            str.shift();
         
             while (chr = str.shift()) {
                 if (chr == JSON_QUOTE) return [[this_str, "str"], str];
@@ -156,10 +156,13 @@ var json = (function () {
             while (tokens.length > 0) {
                 var [[key, type], tokens] = par (tokens);
                 if (type == 'token')
-                    if (key == JSON_BR) return [[obj, "object"], tokens];
+                    if (key == JSON_BR) {
+                        if (obj_exp) throw "par_obj: expect key but see end of file.";
+                        return [[obj, "object"], tokens];
+                    }
                     else throw `par_obj: expect key or '}' but see '${key}'`;
         
-               if (tokens.length < 2) throw "par_obj: expect key but see end of file.";
+               if (tokens.length < 2) throw "par_obj: expect ':' but see end of file.";
         
                var [[tkn, type], tokens] = par (tokens);
                if (type == 'token' && tkn == JSON_COL) {
