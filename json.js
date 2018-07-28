@@ -17,15 +17,12 @@ var json = (function () {
     /* lexer */
     var lex = (function () {
         function _match_str (expected, type, str) {
-            var expected = [...expected];
-            var this_read = '';
-            var _str = str.slice(); // bad
-        
-            while ((chr = str.shift()) && (_chr = expected.shift()))
-                if (_chr != chr) return [null, _str];
-                else this_read += chr;
-        
-            return [[this_read, type], str];
+            if (str.length < expected.length) return [null, str];
+            if (str.slice(0, expected.length).join('') != expected) return [null, str];
+
+            for (var i = 0; i < expected.length; i++) str.shift();
+
+            return [[expected, type], str];
         }
         
         function _any(fns, str) {
@@ -208,6 +205,9 @@ var json = (function () {
                     }
                 case "int": return [[Number.parseInt(tkn), type], tokens];
                 case "float": return [[Number.parseFloat(tkn), type], tokens];
+                case "bool":
+                    if (tkn == "true") return [[true, "bool"], tokens];
+                    return [[false, "bool"], tokens];
                 case "eng": 
                     var [n, _exp] = tkn.split('e').map(n => Number.parseFloat(n));
                     return [[n * 10**_exp, "float"], tokens];
