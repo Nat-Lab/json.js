@@ -57,6 +57,7 @@ var json = (function () {
             var this_int = '';
             var is_float = false;
             var is_eng = false;
+            var num_exp = false;
             var r = /^[0-9]$/;
         
             if (str[0] == '-') this_int += str.shift();
@@ -65,26 +66,33 @@ var json = (function () {
             this_int += str.shift();
         
             while (chr = str.shift()) {
-                if (chr == '.' && is_float) throw "lex_num: unexpected '.'";
+                if (chr == '.' && is_float) throw "lex_num: expect [0-9] but see '.'";
                 if (chr == '.' && !is_float) {
                     is_float = true;
                     this_int += chr;
                     continue;
                 }
-                if (chr == 'e' && is_eng) throw "lex_num: unexpected 'e'"; // TODO: eng float (e.g. 3e-5)
+                if (chr == 'e' && is_eng) throw "lex_num: expect [0-9] but see 'e'";
                 if (chr == 'e' && !is_eng) {
                     is_eng = true;
                     this_int += chr;
+                    if (!str[0]) throw "lex_num: expect [0-9] or '-' but see end of file.";
+                    if (str[0] == '-') {
+                        this_int += str.shift();
+                        num_exp = true;
+                    }
                     continue;
                 }
                 if (!r.test(chr)) {
                     str.unshift(chr);
-                    return [[this_int, is_float ? "float" : "int"], str];
+                    if (num_exp) throw `lex_num: expect [0-9] but see '${chr}'.`;
+                    return [[this_int, is_eng ? "eng" : is_float ? "float" : "int"], str];
                 }
+                num_exp = false;
                 this_int += chr;
             }
         
-            return [[this_int, is_float ? "float" : "int"], str];
+            return [[this_int, is_eng ? "eng" : is_float ? "float" : "int"], str];
         }
         
         function lex_bool (str) {
@@ -95,7 +103,7 @@ var json = (function () {
         }
         
         function lex_null (str) {
-            return _match_str("null", "builtin", str);
+            return _match_str("null", "token", str);
         }
         
         function lex_token (str) {
@@ -112,7 +120,7 @@ var json = (function () {
                     lex_bool, lex_null, lex_num, lex_str, lex_token
                 ], str);
                 if (result) tokens.push(result);
-                if (!result) throw `lex: unexpected token: ${str}`;
+                if (!result) throw `lex: unexpected token: ${str.join(' ')}.`;
         
                 if (str[0] == JSON_SPACE) str.shift();
             }
@@ -121,6 +129,7 @@ var json = (function () {
         }
     })();
     
+    /* parser */
     var parse = (function () {
         function par_array (tokens) {
             var arr = [];
@@ -135,6 +144,7 @@ var json = (function () {
                   else throw `par_array: expect element but saw token '${elem}'`;
                 }
                 arr.push(elem);
+                elem_exp = false;
         
                 if (tokens.length < 1) throw "par_array: expect ',' or ']' but see end of file.";
         
@@ -167,7 +177,10 @@ var json = (function () {
                var [[tkn, type], tokens] = par (tokens);
                if (type == 'token' && tkn == JSON_COL) {
                    var [[value, type], tokens] = par (tokens);
-                   if (type != "token") obj[key] = value;
+                   if (type != "token") {
+                       obj[key] = value;
+                       obj_exp = false;
+                    }
                    else throw `par_obj: expect value but see '${value}'`;
                } else throw `par_obj: expect ':' but see '${tkn}'`;
         
@@ -185,13 +198,22 @@ var json = (function () {
         function par (tokens) {
             var [tkn, type] = tokens.shift();
         
-            if (tkn == JSON_ARRL && type == "token") return par_array(tokens);
-            if (tkn == JSON_BL && type == "token") return par_obj(tokens);
-        
-            if (type == "int") return [[Number.parseInt(tkn), type], tokens]; // TODO: parseInt ignore eng
-            if (type == "float") return [[Number.parseFloat(tkn), type], tokens];
-            if (type == "builtin" && tkn == "null") return [[null, type], tokens];
-            return [[tkn, type], tokens];
+            switch (type) {
+                case "token":
+                    switch (tkn) {
+                        case JSON_ARRL: return par_array(tokens);
+                        case JSON_BL: return par_obj(tokens);
+                        case "null": return [[null, type], tokens];
+                        default: return [[tkn, type], tokens];
+                    }
+                case "int": return [[Number.parseInt(tkn), type], tokens];
+                case "float": return [[Number.parseFloat(tkn), type], tokens];
+                case "eng": 
+                    var [n, _exp] = tkn.split('e').map(n => Number.parseFloat(n));
+                    return [[n * 10**_exp, "float"], tokens];
+                default: return [[tkn, type], tokens];
+            }
+
         }
         
         return function parse (str) {
