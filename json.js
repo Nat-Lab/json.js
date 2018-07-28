@@ -34,7 +34,7 @@ var json = (function () {
         }
         
         function lex_str (str) {
-            this_str = '';
+            var this_str = '', chr = '';
         
             if (str[0] != JSON_QUOTE) return [null, str];
             str.shift();
@@ -51,10 +51,8 @@ var json = (function () {
         }
         
         function lex_num (str) {
-            var this_int = '';
-            var is_float = false;
-            var is_eng = false;
-            var num_exp = false;
+            var this_int = '', chr = '';
+            var is_float = false, num_exp = false, is_eng = false;
             var r = /^[0-9]$/;
         
             if (str[0] == '-') this_int += str.shift();
@@ -109,7 +107,7 @@ var json = (function () {
         }
         
         return function lex (str) {
-            var tokens = [];
+			var tokens = [], result = [];
             str = [...str];
         
             while (str.length > 0) {
@@ -158,7 +156,8 @@ var json = (function () {
     
         function par_obj (tokens) {
             var obj = {};
-            var obj_exp = false;
+			var obj_exp = false;
+			var elem = '';
         
             while (tokens.length > 0) {
                 var [[key, type], tokens] = par (tokens);
@@ -193,6 +192,8 @@ var json = (function () {
         }
         
         function par (tokens) {
+            if (!tokens || tokens.length < 1) throw "par: unexpected end of file.";
+
             var [tkn, type] = tokens.shift();
         
             switch (type) {
