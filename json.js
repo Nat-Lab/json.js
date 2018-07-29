@@ -41,9 +41,8 @@ var json = (function () {
         
             while (chr = str.shift()) {
                 if (chr == JSON_QUOTE) return [[this_str, "str"], str];
-                if (chr == JSON_ESCAPE) {
+                if (chr == JSON_ESCAPE)
                     if (!(chr = str.shift())) throw "lex_str: escaped char excepted but get end of file.";
-                }
                 this_str += chr;
             }
         
@@ -69,7 +68,7 @@ var json = (function () {
                 }
                 if (chr == 'e' && is_eng) throw "lex_num: expect [0-9] but see 'e'";
                 if (chr == 'e' && !is_eng) {
-                    is_eng = true;
+                    is_eng = is_float = true;
                     this_int += chr;
                     if (!str[0]) throw "lex_num: expect [0-9] or '-' but see end of file.";
                     if (str[0] == '-') {
@@ -81,13 +80,13 @@ var json = (function () {
                 if (!r.test(chr)) {
                     str.unshift(chr);
                     if (num_exp) throw `lex_num: expect [0-9] but see '${chr}'.`;
-                    return [[this_int, is_eng ? "eng" : is_float ? "float" : "int"], str];
+                    return [[this_int, is_float ? "float" : "int"], str];
                 }
                 num_exp = false;
                 this_int += chr;
             }
         
-            return [[this_int, is_eng ? "eng" : is_float ? "float" : "int"], str];
+            return [[this_int, is_float ? "float" : "int"], str];
         }
         
         function lex_bool (str) {
@@ -107,7 +106,7 @@ var json = (function () {
         }
         
         return function lex (str) {
-			var tokens = [], result = [];
+            var tokens = [], result = [];
             str = [...str];
         
             while (str.length > 0) {
@@ -133,10 +132,10 @@ var json = (function () {
             while (tokens.length > 0) {
                 var [[elem, type], tokens] = par(tokens);
                 if (type == 'token') {
-                  if (elem == JSON_ARRR)
-                      if (!elem_exp) return [[arr, "array"], tokens];
-                      else throw "par_array: expect ']' but see ','";
-                  else throw `par_array: expect element but saw token '${elem}'`;
+                    if (elem == JSON_ARRR)
+                        if (!elem_exp) return [[arr, "array"], tokens];
+                        else throw "par_array: expect ']' but see ','";
+                    else throw `par_array: expect element but saw token '${elem}'`;
                 }
                 arr.push(elem);
                 elem_exp = false;
@@ -156,8 +155,8 @@ var json = (function () {
     
         function par_obj (tokens) {
             var obj = {};
-			var obj_exp = false;
-			var elem = '';
+            var obj_exp = false;
+            var elem = '';
         
             while (tokens.length > 0) {
                 var [[key, type], tokens] = par (tokens);
@@ -165,8 +164,7 @@ var json = (function () {
                     if (key == JSON_BR) {
                         if (obj_exp) throw "par_obj: expect key but see end of file.";
                         return [[obj, "object"], tokens];
-                    }
-                    else throw `par_obj: expect key or '}' but see '${key}'`;
+                    } else throw `par_obj: expect key or '}' but see '${key}'`;
         
                if (tokens.length < 2) throw "par_obj: expect ':' but see end of file.";
         
@@ -209,9 +207,6 @@ var json = (function () {
                 case "bool":
                     if (tkn == "true") return [[true, "bool"], tokens];
                     return [[false, "bool"], tokens];
-                case "eng": 
-                    var [n, _exp] = tkn.split('e').map(n => Number.parseFloat(n));
-                    return [[n * 10**_exp, "float"], tokens];
                 default: return [[tkn, type], tokens];
             }
 
